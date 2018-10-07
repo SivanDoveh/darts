@@ -62,12 +62,12 @@ class Cell(nn.Module):
 
 class AuxiliaryHeadCIFAR(nn.Module):
 
-  def __init__(self, C, num_classes):
+  def __init__(self, C, num_classes,stride_val):
     """assuming input size 8x8"""
     super(AuxiliaryHeadCIFAR, self).__init__()
     self.features = nn.Sequential(
       nn.ReLU(inplace=True),
-      nn.AvgPool2d(5, stride=3, padding=0, count_include_pad=False), # image size = 2 x 2
+      nn.AvgPool2d(5, stride=stride_val, padding=0, count_include_pad=False), # image size = 2 x 2 # different stride for FashionMNIST - image size after 2 pooling is 7x7
       nn.Conv2d(C, 128, 1, bias=False),
       nn.BatchNorm2d(128),
       nn.ReLU(inplace=True),
@@ -110,7 +110,7 @@ class AuxiliaryHeadImageNet(nn.Module):
 
 class NetworkCIFAR(nn.Module):
 
-  def __init__(self, C, num_classes, layers, auxiliary, genotype):
+  def __init__(self, C, in_channels,stride_for_aux,num_classes, layers, auxiliary, genotype):#in channels
     super(NetworkCIFAR, self).__init__()
     self._layers = layers
     self._auxiliary = auxiliary
@@ -118,7 +118,7 @@ class NetworkCIFAR(nn.Module):
     stem_multiplier = 3
     C_curr = stem_multiplier*C
     self.stem = nn.Sequential(
-      nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
+      nn.Conv2d(in_channels, C_curr, 3, padding=1, bias=False),
       nn.BatchNorm2d(C_curr)
     )
     
@@ -139,7 +139,7 @@ class NetworkCIFAR(nn.Module):
         C_to_auxiliary = C_prev
 
     if auxiliary:
-      self.auxiliary_head = AuxiliaryHeadCIFAR(C_to_auxiliary, num_classes)
+      self.auxiliary_head = AuxiliaryHeadCIFAR(C_to_auxiliary, num_classes,stride_for_aux)
     self.global_pooling = nn.AdaptiveAvgPool2d(1)
     self.classifier = nn.Linear(C_prev, num_classes)
 
