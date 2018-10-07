@@ -4,7 +4,7 @@ import torch
 import shutil
 import torchvision.transforms as transforms
 from torch.autograd import Variable
-
+import torchvision.datasets as dset
 
 class AvgrageMeter(object):
 
@@ -58,8 +58,43 @@ class Cutout(object):
         img *= mask
         return img
 
+def _data_transforms_dataset(args):#new
 
-def _data_transforms_cifar10(args):
+  assert args.dataset in set(['cifar10', 'fashion_mnist', 'SVHN']), 'unknown dataset %s' % dataset
+  if args.dataset == 'cifar10':
+      mean = (0.4914, 0.4822, 0.4465)
+      std = (0.24705882352941178, 0.24352941176470588, 0.2615686274509804)
+      image_size = 32
+      cutout_length = 16
+
+  elif args.dataset == 'fashion_mnist':
+      mean = (0.28604060411453247,)
+      std = (0.3530242443084717,)
+      image_size = 28
+      cutout_length = 16
+
+  elif args.dataset == 'SVHN':
+      mean = (0.43768218, 0.44376934, 0.47280428)
+      std = (0.1980301, 0.2010157, 0.19703591)
+      image_size = 32
+      cutout_length = 20
+
+  train_transform = transforms.Compose([
+    transforms.RandomCrop(image_size, padding=4),# cifar and svhn are 32 , fashion-mnist is 28
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(mean,std),
+  ])
+  if args.cutout:
+    train_transform.transforms.append(Cutout(cutout_length))
+
+  valid_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean, std),
+    ])
+  return train_transform, valid_transform
+
+def _data_transforms_cifar10(args):# not used
   CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
   CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
 
@@ -80,7 +115,7 @@ def _data_transforms_cifar10(args):
 
 
 def count_parameters_in_MB(model):
-  return np.sum(np.prod(v.size()) for name, v in model.named_parameters() if "auxiliary" not in name)/1e6
+  return np.sum(np.prod(v.size()) for v in model.parameters())/1e6
 
 
 def save_checkpoint(state, is_best, save):
@@ -118,4 +153,40 @@ def create_exp_dir(path, scripts_to_save=None):
     for script in scripts_to_save:
       dst_file = os.path.join(path, 'scripts', os.path.basename(script))
       shutil.copyfile(script, dst_file)
+      
+#new func
+def dataset_fields(args,train=True):
+    if args.dataset == 'cifar10':
+        in_channels = 3
+        num_classes = 10
+        dataset_in_torch = dset.CIFAR10
+        stride_for_aux = 3
+    elif args.dataset == 'fashion_mnist':
+        in_channels = 1
+        num_classes = 10
+        dataset_in_torch = dset.FashionMNIST
+        stride_for_aux = 2
+    elif args.dataset == 'SVHN':
+        in_channels = 3
+        num_classes = 10
+        dataset_in_torch = dset.SVHN
+        stride_for_aux = 3        
+    if train == False:
+       return in_channels,num_classes,dataset_in_torch,stride_for_aux     
+    return in_channels,num_classes,dataset_in_torch
+
+def dataset_split_and_transform(dataset_in_torch,args,train=True):
+    train_transform, valid_transform =_data_transforms_dataset(args)    
+    if args.dataset == 'SVHN':  # different fields for svhn
+        train_data = dataset_in_torch(root=args.data, split='train', download=True, transform=train_transform)
+        if train==False:
+            valid_data = dataset_in_torch(root=args.data, split='test', download=True, transform=valid_transform)
+            return train_data,valid_data
+    else:
+        train_data = dataset_in_torch(root=args.data, train=True, download=True, transform=train_transform)
+        if train==False:
+            valid_data = dataset_in_torch(root=args.data, train=False, download=True, transform=valid_transform)
+            return train_data,valid_data
+            
+    return train_data
 
