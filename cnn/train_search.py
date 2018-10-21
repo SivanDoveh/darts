@@ -81,7 +81,7 @@ def main():
   model = model.cuda()
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
-  optimizer = torch.optim.SGD( #SGD for weights
+  optimizer = torch.optim.SGD(
       model.parameters(),
       args.learning_rate,
       momentum=args.momentum,
@@ -134,7 +134,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
   top1 = utils.AvgrageMeter()
   top5 = utils.AvgrageMeter()
 
-  for step, (input, target) in enumerate(train_queue):#input,target is for w step
+  for step, (input, target) in enumerate(train_queue):
     model.train()
     n = input.size(0)
 
@@ -142,7 +142,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
     target = Variable(target, requires_grad=False).cuda(async=True)
 
     # get a random minibatch from the search queue with replacement
-    input_search, target_search = next(iter(valid_queue))#input_search,target_search is for alpha step
+    input_search, target_search = next(iter(valid_queue))
     input_search = Variable(input_search, requires_grad=False).cuda()
     target_search = Variable(target_search, requires_grad=False).cuda(async=True)
 
