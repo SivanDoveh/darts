@@ -124,12 +124,12 @@ class Network(nn.Module):
 
     self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
     self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-    self._arch_parameters = [
+    self._arch_parameters = [ #in init we create alpha in class
       self.alphas_normal,
       self.alphas_reduce,
     ]
 
-  def arch_parameters(self):
+  def arch_parameters(self):#function to get back alpha- reduction and normal
     return self._arch_parameters
 
   def genotype(self):
