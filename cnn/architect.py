@@ -24,33 +24,33 @@ class Architect(object):
       moment = _concat(network_optimizer.state[v]['momentum_buffer'] for v in self.model.parameters()).mul_(self.network_momentum)
     except:
       moment = torch.zeros_like(theta)
-    dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta
-    unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))
+    dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta #dl_train/dw +wd*w
+    unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))#w -eta*(moment+dl/dw) -> unrolled model = w'
     return unrolled_model
 
-  def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, unrolled):
+  def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, unrolled):#eta is lr of weights
     self.optimizer.zero_grad()
     if unrolled:
-        self._backward_step_unrolled(input_train, target_train, input_valid, target_valid, eta, network_optimizer)
+        self._backward_step_unrolled(input_train, target_train, input_valid, target_valid, eta, network_optimizer)#network_optimizer = SGD for w
     else:
         self._backward_step(input_valid, target_valid)
-    self.optimizer.step()
+    self.optimizer.step() #step of adam for alpha
 
   def _backward_step(self, input_valid, target_valid):
     loss = self.model._loss(input_valid, target_valid)
     loss.backward()
 
-  def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer):
+  def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer):#calculates update rule for alpha
     unrolled_model = self._compute_unrolled_model(input_train, target_train, eta, network_optimizer)
-    unrolled_loss = unrolled_model._loss(input_valid, target_valid)
+    unrolled_loss = unrolled_model._loss(input_valid, target_valid)# L_val on model with w' weights
 
     unrolled_loss.backward()
-    dalpha = [v.grad for v in unrolled_model.arch_parameters()]
-    vector = [v.grad.data for v in unrolled_model.parameters()]
-    implicit_grads = self._hessian_vector_product(vector, input_train, target_train)
+    dalpha = [v.grad for v in unrolled_model.arch_parameters()]#dL_val/dalpha
+    vector = [v.grad.data for v in unrolled_model.parameters()]#dL_val/dw'
+    implicit_grads = self._hessian_vector_product(vector, input_train, target_train) #this is eq.7. now we need to do l_val on w'/daplha - implicit_grads
 
     for g, ig in zip(dalpha, implicit_grads):
-      g.data.sub_(eta, ig.data)
+      g.data.sub_(eta, ig.data)# g is dL_val/dalpha, this line computes dL_val/dalpha - eta*implicit.. this is eq.6 for updating alpha
 
     for v, g in zip(self.model.arch_parameters(), dalpha):
       if v.grad is None:
@@ -76,16 +76,16 @@ class Architect(object):
   def _hessian_vector_product(self, vector, input, target, r=1e-2):
     R = r / _concat(vector).norm()
     for p, v in zip(self.model.parameters(), vector):
-      p.data.add_(R, v)
-    loss = self.model._loss(input, target)
-    grads_p = torch.autograd.grad(loss, self.model.arch_parameters())
+      p.data.add_(R, v)#p is w ,R is epsilon, v is dl/dw' . now p is w+
+    loss = self.model._loss(input, target) #loss_train on w+
+    grads_p = torch.autograd.grad(loss, self.model.arch_parameters())#d loss_train on w+/ dalpha
 
     for p, v in zip(self.model.parameters(), vector):
-      p.data.sub_(2*R, v)
+      p.data.sub_(2*R, v)#why 2R
     loss = self.model._loss(input, target)
-    grads_n = torch.autograd.grad(loss, self.model.arch_parameters())
+    grads_n = torch.autograd.grad(loss, self.model.arch_parameters())#d loss_train on w-/ dalpha
 
-    for p, v in zip(self.model.parameters(), vector):
+    for p, v in zip(self.model.parameters(), vector):#what this line does?S
       p.data.add_(R, v)
 
     return [(x-y).div_(2*R) for x, y in zip(grads_p, grads_n)]
