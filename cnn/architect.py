@@ -19,7 +19,7 @@ class Architect(object):
 
   def _compute_unrolled_model(self, input, target, eta, network_optimizer):
     loss = self.model._loss(input, target)
-    theta = _concat(self.model.parameters()).data
+    theta = _concat(self.model.parameters()).data#W
     try:
       moment = _concat(network_optimizer.state[v]['momentum_buffer'] for v in self.model.parameters()).mul_(self.network_momentum)
     except:
@@ -54,7 +54,7 @@ class Architect(object):
 
     for v, g in zip(self.model.arch_parameters(), dalpha):
       if v.grad is None:
-        v.grad = Variable(g.data)
+        v.grad = Variable(g.data)#here they put the grad so the optmizer will know what grads to take
       else:
         v.grad.data.copy_(g.data)
 
@@ -85,7 +85,7 @@ class Architect(object):
     loss = self.model._loss(input, target)
     grads_n = torch.autograd.grad(loss, self.model.arch_parameters())#d loss_train on w-/ dalpha
 
-    for p, v in zip(self.model.parameters(), vector):#what this line does?S
+    for p, v in zip(self.model.parameters(), vector):#retuen p to be original model.parameters()
       p.data.add_(R, v)
 
     return [(x-y).div_(2*R) for x, y in zip(grads_p, grads_n)]

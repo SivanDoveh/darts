@@ -40,7 +40,7 @@ class Cell(nn.Module):
     self._ops = nn.ModuleList()
     self._bns = nn.ModuleList()
     for i in range(self._steps):
-      for j in range(2+i):
+      for j in range(2):#for j in range(2+i):
         stride = 2 if reduction and j < 2 else 1
         op = MixedOp(C, stride)
         self._ops.append(op)

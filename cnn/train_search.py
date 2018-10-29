@@ -146,8 +146,8 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
     input_search = Variable(input_search, requires_grad=False).cuda()
     target_search = Variable(target_search, requires_grad=False).cuda(async=True)
 
-    architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
-
+    architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)#update alpha
+    #during the arch.step the optimination for alpha happen
     optimizer.zero_grad()
     logits = model(input)
     loss = criterion(logits, target)
