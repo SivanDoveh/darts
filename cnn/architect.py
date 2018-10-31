@@ -25,7 +25,7 @@ class Architect(object):
     except:
       moment = torch.zeros_like(theta)
     dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta #dl_train/dw +wd*w
-    unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))#w -eta*(moment+dl/dw) -> unrolled model = w'
+    unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))#w -eta*(moment+dl/dw) -> unrolled model = network on w'
     return unrolled_model
 
   def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, unrolled):#eta is lr of weights
@@ -81,7 +81,7 @@ class Architect(object):
     grads_p = torch.autograd.grad(loss, self.model.arch_parameters())#d loss_train on w+/ dalpha
 
     for p, v in zip(self.model.parameters(), vector):
-      p.data.sub_(2*R, v)#why 2R
+      p.data.sub_(2*R, v)#add 1 then sub 2 
     loss = self.model._loss(input, target)
     grads_n = torch.autograd.grad(loss, self.model.arch_parameters())#d loss_train on w-/ dalpha
 

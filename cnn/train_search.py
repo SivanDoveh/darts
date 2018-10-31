@@ -14,7 +14,7 @@ import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
-from model_search import Network
+from model_search_2_FM import Network
 from architect import Architect
 
 import torchvision.transforms as transforms

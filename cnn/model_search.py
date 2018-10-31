@@ -13,16 +13,16 @@ class MixedOp(nn.Module):
     super(MixedOp, self).__init__()
     self._ops = nn.ModuleList()
     for primitive in PRIMITIVES:
-      op = OPS[primitive](C, stride, False)
+      op = OPS[primitive](C, stride, False)#inside op there are all the operations 
       if 'pool' in primitive:
         op = nn.Sequential(op, nn.BatchNorm2d(C, affine=False))
       self._ops.append(op)
 
-  def forward(self, x, weights):
+  def forward(self, x, weights):#x is feature map (node) and weights are the weight for every operation and the mixed_op is alpha_i,j 
     return sum(w * op(x) for w, op in zip(weights, self._ops))
 
 
-class Cell(nn.Module):
+class Cell(nn.Module):#if reduction=true- then cell will be reduction
 
   def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
     super(Cell, self).__init__()
@@ -34,27 +34,27 @@ class Cell(nn.Module):
       self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
 
     self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
-    self._steps = steps
+    self._steps = steps#number of nodes inside
     self._multiplier = multiplier
 
     self._ops = nn.ModuleList()
     self._bns = nn.ModuleList()
-    for i in range(self._steps):
-      for j in range(2):#for j in range(2+i):
+    for i in range(self._steps):#nodes in cell- the get info from j
+      for j in range(2+i):
         stride = 2 if reduction and j < 2 else 1
-        op = MixedOp(C, stride)
+        op = MixedOp(C, stride)#list of operations per i,j. its instance of  aclass that can be applied after to feature map
         self._ops.append(op)
 
-  def forward(self, s0, s1, weights):
-    s0 = self.preprocess0(s0)
+  def forward(self, s0, s1, weights):#cell gets as input the previos outputs. weights is arch_weights:
+    s0 = self.preprocess0(s0)#the 1x1 conv on the last inputs.s0 is feature map
     s1 = self.preprocess1(s1)
-
+    
     states = [s0, s1]
     offset = 0
     for i in range(self._steps):
-      s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-      offset += len(states)
-      states.append(s)
+        s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))#here we get the mixed_op value on feature_maps 0 and 1 
+        offset += len(states)
+        states.append(s)
 
     return torch.cat(states[-self._multiplier:], dim=1)
 
@@ -119,7 +119,7 @@ class Network(nn.Module):
     return self._criterion(logits, target) 
 
   def _initialize_alphas(self):
-    k = sum(1 for i in range(self._steps) for n in range(2+i))
+    k = sum(1 for i in range(self._steps) for n in range(2))
     num_ops = len(PRIMITIVES)
 
     self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
