@@ -14,8 +14,9 @@ import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
-from model_search_2_FM import Network
+from model_search import Network
 from architect import Architect
+from prune import Prune
 
 import torchvision.transforms as transforms
 
@@ -44,6 +45,9 @@ parser.add_argument('--train_portion', type=float, default=0.5, help='portion of
 parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
+parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
+parser.add_argument('--epochs_pre_prune', type=int, default=19, help='number of alphas to prune')
+parser.add_argument('--sparse', type=str, default='', help='do sparse pruning from prune or not')
 args = parser.parse_args()
 
 args.save = args.dataset + '-search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
@@ -106,6 +110,7 @@ def main():
         optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
   architect = Architect(model, args)
+  prune = Prune(args.epochs_pre_prune)
 
   for epoch in range(args.epochs):
     scheduler.step()
@@ -115,11 +120,19 @@ def main():
     genotype = model.genotype()
     logging.info('genotype = %s', genotype)
 
-    print(F.softmax(model.alphas_normal, dim=-1))
-    print(F.softmax(model.alphas_reduce, dim=-1))
-
+    logging.info(F.softmax(model.alphas_normal, dim=-1))
+    logging.info(F.softmax(model.alphas_reduce, dim=-1))
     # training
+    if epoch == args.epochs - 1:
+      prune.num_to_zero = 90 - (len(prune.zeros_indices_alphas_normal))  # need to prune 90 alphas by the end
+
+    if args.sparse == 'sparse':
+      prune.num_to_zero_sparse(epoch, args)
+
+    prune.prune_alphas_step(model)
+
     train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr)
+
     logging.info('train_acc %f', train_acc)
 
     # validation
@@ -127,7 +140,6 @@ def main():
     logging.info('valid_acc %f', valid_acc)
 
     utils.save(model, os.path.join(args.save, 'weights.pt'))
-
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
   objs = utils.AvgrageMeter()
@@ -193,5 +205,4 @@ def infer(valid_queue, model, criterion):
 
 
 if __name__ == '__main__':
-  main()
-
+    main()
