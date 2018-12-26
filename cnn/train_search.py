@@ -48,9 +48,11 @@ parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weigh
 parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
 parser.add_argument('--epochs_pre_prune', type=int, default=19, help='number of alphas to prune')
 parser.add_argument('--sparse', type=str, default='', help='do sparse pruning from prune or not')
+parser.add_argument('--s_f', type=float, default=0.91, help='number of alphas to prune')
+
 args = parser.parse_args()
 
-args.save = args.dataset + '-search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+args.save = args.dataset + '-'+str(args.epochs_pre_prune)+'-search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
 log_format = '%(asctime)s %(message)s'
@@ -113,23 +115,29 @@ def main():
   prune = Prune(args.epochs_pre_prune)
 
   for epoch in range(args.epochs):
+
     scheduler.step()
     lr = scheduler.get_lr()[0]
     logging.info('epoch %d lr %e', epoch, lr)
 
-    genotype = model.genotype()
-    logging.info('genotype = %s', genotype)
+    # pruning
 
-    logging.info(F.softmax(model.alphas_normal, dim=-1))
-    logging.info(F.softmax(model.alphas_reduce, dim=-1))
-    # training
-    if epoch == args.epochs - 1:
-      prune.num_to_zero = 90 - (len(prune.zeros_indices_alphas_normal))  # need to prune 90 alphas by the end
 
-    if args.sparse == 'sparse':
-      prune.num_to_zero_sparse(epoch, args)
+    if epoch > args.epochs_pre_prune:
 
-    prune.prune_alphas_step(model)
+      if args.sparse == 'sparse':
+        prune.num_to_zero_sparse(epoch, args)
+
+      if epoch == args.epochs - 1:
+        prune.num_to_zero = 104 - (len(prune.zeros_indices_alphas_normal))  # need to prune 90 alphas by the end
+
+      prune.prune_alphas_step(model)
+
+    #training
+    #genotype = model.genotype()
+    #logging.info('genotype = %s', genotype)
+    #logging.info(F.softmax(model.alphas_normal, dim=-1))
+    #logging.info(F.softmax(model.alphas_reduce, dim=-1))
 
     train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr)
 
@@ -138,6 +146,11 @@ def main():
     # validation
     valid_acc, valid_obj = infer(valid_queue, model, criterion)
     logging.info('valid_acc %f', valid_acc)
+
+    genotype = model.genotype()
+    logging.info('genotype = %s', genotype)
+    logging.info(F.softmax(model.alphas_normal, dim=-1))
+    logging.info(F.softmax(model.alphas_reduce, dim=-1))
 
     utils.save(model, os.path.join(args.save, 'weights.pt'))
 

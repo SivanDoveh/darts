@@ -7,10 +7,10 @@ class Prune(object):
     def __init__(self, epochs_pre_prune):
         self.zeros_indices_alphas_normal = list(range(0, 112, 8))  # in order to not zero the 'zero' op
         self.zeros_indices_alphas_reduce = list(range(0, 112, 8))
-        self.num_to_zero = 90//(49-epochs_pre_prune)
+        self.num_to_zero = 0
         self.sparsity = 0
 
-    def prune_alphas_step(self, model):
+    def prune_all_alphas(self, model):
         self.prune_alphas(model.alphas_normal, False)
         self.prune_alphas(model.alphas_reduce, True)
 
@@ -32,6 +32,5 @@ class Prune(object):
 
     def num_to_zero_sparse(self, epoch, args):
         sparsity_prev = self.sparsity
-        self.sparsity = args.s_f - args.s_f*((1 - (epoch - args.epochs_pre_prune) / (args.epochs - 1 - args.epochs_pre_prune)) ** 3)
-        self.num_to_zero = int(np.floor((self.sparsity - sparsity_prev) * 98))
-        print(self.num_to_zero)
+        self.sparsity = args.s_f - args.s_f(1 - (epoch - args.epochs_pre_prune) / (args.epochs - 1 - args.epochs_pre_prune)) ** 3
+        self.num_to_zero = np.floor((self.sparsity - sparsity_prev) * 98)

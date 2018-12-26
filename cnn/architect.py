@@ -14,6 +14,7 @@ class Architect(object):
     self.network_momentum = args.momentum
     self.network_weight_decay = args.weight_decay
     self.model = model
+    #self.optimizer = torch.optim.SGD(self.model.arch_parameters(), lr=args.arch_learning_rate, weight_decay=args.arch_weight_decay)
     self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
         lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
 
@@ -24,7 +25,7 @@ class Architect(object):
       moment = _concat(network_optimizer.state[v]['momentum_buffer'] for v in self.model.parameters()).mul_(self.network_momentum)
     except:
       moment = torch.zeros_like(theta)
-    dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta #dl_train/dw +wd*w
+    dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta #dl_train/dw +wd*w - they use autograd in order to not accumulate grads-they only wanr to calculate them
     unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))#w -eta*(moment+dl/dw) -> unrolled model = network on w'
     return unrolled_model
 
@@ -42,9 +43,9 @@ class Architect(object):
 
   def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer):#calculates update rule for alpha
     unrolled_model = self._compute_unrolled_model(input_train, target_train, eta, network_optimizer)
-    unrolled_loss = unrolled_model._loss(input_valid, target_valid)# L_val on model with w' weights
+    unrolled_loss = unrolled_model._loss(input_valid, target_valid)# L_val  on model with w' 
 
-    unrolled_loss.backward()
+    unrolled_loss.backward()#
     dalpha = [v.grad for v in unrolled_model.arch_parameters()]#dL_val/dalpha
     vector = [v.grad.data for v in unrolled_model.parameters()]#dL_val/dw'
     implicit_grads = self._hessian_vector_product(vector, input_train, target_train) #this is eq.7. now we need to do l_val on w'/daplha - implicit_grads

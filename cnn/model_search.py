@@ -6,7 +6,6 @@ from torch.autograd import Variable
 from genotypes import PRIMITIVES
 from genotypes import Genotype
 
-
 class MixedOp(nn.Module):
 
   def __init__(self, C, stride):
@@ -20,7 +19,6 @@ class MixedOp(nn.Module):
 
   def forward(self, x, weights):#x is feature map (node) and weights are the weight for every operation and the mixed_op is alpha_i,j 
     return sum(w * op(x) for w, op in zip(weights, self._ops))
-
 
 class Cell(nn.Module):#if reduction=true- then cell will be reduction
 
@@ -61,7 +59,7 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
 
 class Network(nn.Module):
 
-  def __init__(self, C,in_channels, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):#in channels
+  def __init__(self, C, in_channels, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):#in channels
     super(Network, self).__init__()
     self._C = C
     self._num_classes = num_classes
@@ -119,10 +117,11 @@ class Network(nn.Module):
     return self._criterion(logits, target) 
 
   def _initialize_alphas(self):
-    k = sum(1 for i in range(self._steps) for n in range(2))
+    k = sum(1 for i in range(self._steps) for n in range(2+i))
     num_ops = len(PRIMITIVES)
 
     self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    #h = self.alphas_normal.register_hook(self.prune)#
     self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
     self._arch_parameters = [ #in init we create alpha in class
       self.alphas_normal,
@@ -162,4 +161,3 @@ class Network(nn.Module):
       reduce=gene_reduce, reduce_concat=concat
     )
     return genotype
-
