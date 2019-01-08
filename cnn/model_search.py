@@ -109,7 +109,7 @@ class Network(nn.Module):
         weights = F.softmax(self.alphas_normal, dim=-1)
       s0, s1 = s1, cell(s0, s1, weights)
     out = self.global_pooling(s1)
-    logits = self.classifier(out.view(out.size(0),-1))
+    logits = self.classifier(out.view(out.size(0), -1))
     return logits
 
   def _loss(self, input, target):

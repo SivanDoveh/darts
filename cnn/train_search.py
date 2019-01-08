@@ -45,14 +45,13 @@ parser.add_argument('--train_portion', type=float, default=0.5, help='portion of
 parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
-parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
-parser.add_argument('--epochs_pre_prune', type=int, default=19, help='number of alphas to prune')
-parser.add_argument('--sparse', type=str, default='', help='do sparse pruning from prune or not')
-parser.add_argument('--s_f', type=float, default=0.91, help='number of alphas to prune')
+parser.add_argument('--num_to_zero', type=int, default=3, help='number of alphas to prune')
+parser.add_argument('--epochs_pre_prune', type=int, default=29, help='number of alphas to prune')
+
 
 args = parser.parse_args()
 
-args.save = args.dataset + '-'+str(args.epochs_pre_prune)+'-search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+args.save = args.dataset + '-' +str(args.epochs_pre_prune)+'-search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
 log_format = '%(asctime)s %(message)s'
@@ -112,7 +111,7 @@ def main():
         optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
   architect = Architect(model, args)
-  prune = Prune(args.epochs_pre_prune)
+  prune = Prune(args.num_to_zero)
 
   for epoch in range(args.epochs):
 
@@ -122,14 +121,10 @@ def main():
 
     # pruning
 
-
     if epoch > args.epochs_pre_prune:
 
-      if args.sparse == 'sparse':
-        prune.num_to_zero_sparse(epoch, args)
-
-      if epoch == args.epochs - 1:
-        prune.num_to_zero = 104 - (len(prune.zeros_indices_alphas_normal))  # need to prune 90 alphas by the end
+      #if epoch == args.epochs - 1:
+      #   prune.num_to_zero = 104 - (len(prune.zeros_indices_alphas_normal))  # need to prune 90 alphas by the end
 
       prune.prune_alphas_step(model)
 

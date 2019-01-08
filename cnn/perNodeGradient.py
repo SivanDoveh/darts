@@ -16,22 +16,21 @@ class Prune(object):
             self.s_f_per_node = 1 - 2 / self.alphas_size
             self.zeroed_until_now = [0, 0]
 
-        def prune_node(self, alphas, k, epoch, args):
+        def prune_node(self, alphas, k, epoch, epochs_pre_prune, epochs):
             val, ind = alphas.data.sort()
             list_zeroed = self.zeros_indices[k]
             ind = [x for x in ind if x not in list_zeroed]
-            self.num_to_zero_sparse(epoch, args, k)
+            self.num_to_zero_sparse(epoch, epochs_pre_prune, epochs, k)
             for i in ind[0:int(self.num_to_zero[k])]:
                 list_zeroed.append(i)
 
-        def num_to_zero_sparse(self, epoch, args, k):
-            # self.zeroed_until_now[k] = self.zeroed_until_now[k] + self.num_to_zero[k]
+        def num_to_zero_sparse(self, epoch, epochs_pre_prune, epochs, k):
             sparsity_prev = self.zeroed_until_now[k] / self.alphas_size
             self.sparsity[k] = self.s_f_per_node - self.s_f_per_node*(
-                1 - (epoch - args.epochs_pre_prune) / (args.epochs - 1 - args.epochs_pre_prune)) ** 3
+                1 - (epoch + 1 - epochs_pre_prune) / (epochs - epochs_pre_prune)) ** 3
             self.num_to_zero[k] = np.floor((self.sparsity[k] - sparsity_prev) * self.alphas_size)
 
-            if epoch == args.epochs - 1:
+            if epoch == epochs - 1:
                 self.num_to_zero[k] = self.alphas_size - 2 - self.zeroed_until_now[k]
 
             self.zeroed_until_now[k] = self.zeroed_until_now[k] + self.num_to_zero[k]
@@ -59,15 +58,23 @@ class Prune(object):
 
         return list_zeroed
 
-    def prune_alphas_step(self, all_alphas, epoch, args):
+    def prune_alphas_step(self, arch_parameters, dalpha, dalpha_normalized_params, epoch, epochs_pre_prune, epochs):
         for k in range(0, 2):
-            alphas = all_alphas[k]
+
+            dalpha_normalized = dalpha_normalized_params[k]
+            alphas = arch_parameters[k]
+            dalphas = dalpha[k]
+
             zeroed = 0
+
+            dalpha_normalized.data.resize_(1, 112)
             alphas.data.resize_(1, 112)
-            alphas_split = self.split_to_alpha_groups(alphas)
+            dalphas.data.resize_(1, 112)
+
+            alphas_split = self.split_to_alpha_groups(dalpha_normalized)
 
             for i in range(0, 4):
-                self.nodes[i].prune_node(alphas_split[i], k, epoch, args)
+                self.nodes[i].prune_node(alphas_split[i], k, epoch, epochs_pre_prune, epochs)
                 zeroed = zeroed + self.nodes[i].zeroed_until_now[k]
 
             ind_all_alphas = self.all_zero_indices_from_all_nodes(k)
@@ -75,7 +82,10 @@ class Prune(object):
 
             for i in ind_all_alphas:
                 alphas.data[0, i] = -1000
+                dalphas.data[0, i] = 0
 
+                #dalpha_normalized_params.data.resize_(14, 8)
             alphas.data.resize_(14, 8)
+            dalphas.data.resize_(14, 8)
 
             print(str(zeroed))

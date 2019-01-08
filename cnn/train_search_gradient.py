@@ -15,8 +15,8 @@ import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
 from model_search import Network
-from architect import Architect
-from perNodePruning import Prune
+from architect_gp import Architect
+from perNodeGradient import Prune
 
 import torchvision.transforms as transforms
 
@@ -45,10 +45,10 @@ parser.add_argument('--train_portion', type=float, default=0.5, help='portion of
 parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
+
 parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
 parser.add_argument('--epochs_pre_prune', type=int, default=19, help='number of alphas to prune')
-parser.add_argument('--sparse', type=str, default='', help='do sparse pruning from prune or not')
-parser.add_argument('--s_f', type=float, default=0.91, help='number of alphas to prune')
+#parser.add_argument('--s_f', type=float, default=0.91, help='number of alphas to prune')
 
 args = parser.parse_args()
 
@@ -113,7 +113,6 @@ def main():
         optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
     architect = Architect(model, args)
-    prune = Prune()
 
     for epoch in range(args.epochs):
         scheduler.step()
@@ -121,12 +120,12 @@ def main():
         logging.info('epoch %d lr %e', epoch, lr)
 
         # pruning
-        if epoch > args.epochs_pre_prune:
-
-            prune.prune_alphas_step(model._arch_parameters, epoch, args)
+        # if epoch > args.epochs_pre_prune:
+        #
+        #     prune.prune_alphas_step(model._arch_parameters, epoch, args)
 
         # training
-        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr)
+        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr,epoch)
 
         logging.info('train_acc %f', train_acc)
 
@@ -142,7 +141,7 @@ def main():
         utils.save(model, os.path.join(args.save, 'weights.pt'))
 
 
-def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
+def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch):
     objs = utils.AvgrageMeter()
     top1 = utils.AvgrageMeter()
     top5 = utils.AvgrageMeter()
@@ -159,9 +158,9 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
         input_search = Variable(input_search, requires_grad=False).cuda()
         target_search = Variable(target_search, requires_grad=False).cuda(async=True)
 
-        architect.step(input, target, input_search, target_search, lr, optimizer,
-                       unrolled=args.unrolled)  # update alpha
-        # during the arch.step the optimination for alpha happen
+        architect.step(input, target, input_search, target_search, lr, optimizer, step, epoch, args.epochs_pre_prune, args.epochs,
+                       unrolled=args.unrolled,)  # update alpha
+        # during the arch.step the optimization for alpha happen
         optimizer.zero_grad()
         logits = model(input)
         loss = criterion(logits, target)
