@@ -15,8 +15,9 @@ import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
 from model_search import Network
+
 from architect_gp import Architect
-from perNodeGradient import Prune
+#from architect_all_alpha import Architect
 
 import torchvision.transforms as transforms
 
@@ -46,9 +47,9 @@ parser.add_argument('--unrolled', action='store_true', default=False, help='use 
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
 
-parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
-parser.add_argument('--epochs_pre_prune', type=int, default=19, help='number of alphas to prune')
-#parser.add_argument('--s_f', type=float, default=0.91, help='number of alphas to prune')
+#parser.add_argument('--num_to_zero', type=int, default=2, help='number of alphas to prune')
+parser.add_argument('--epochs_pre_prune', type=int, default=19, help='epochs pre pruning')
+parser.add_argument('--steps_accum', type=float, default=0, help='number of steps to accumulate gradients')
 
 args = parser.parse_args()
 
@@ -119,11 +120,6 @@ def main():
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        # pruning
-        # if epoch > args.epochs_pre_prune:
-        #
-        #     prune.prune_alphas_step(model._arch_parameters, epoch, args)
-
         # training
         train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr,epoch)
 
@@ -147,7 +143,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
     top5 = utils.AvgrageMeter()
 
     for step, (input, target) in enumerate(train_queue):  # input,target is for w step
-        #model.train()
+        model.train()
         n = input.size(0)
 
         input = Variable(input, requires_grad=False).cuda()
@@ -157,9 +153,13 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         input_search, target_search = next(iter(valid_queue))  # input_search,target_search is for alpha step
         input_search = Variable(input_search, requires_grad=False).cuda()
         target_search = Variable(target_search, requires_grad=False).cuda(async=True)
+        prune_args = {'step': step, 'epoch': epoch, 'epochs_pre_prune': args.epochs_pre_prune, 'epochs': args.epochs,
+                      'steps_accum': args.steps_accum, 'logging': logging}
+        # architect.step(input, target, input_search, target_search, lr, optimizer, step, epoch, args.epochs_pre_prune, args.epochs, args.steps_accum, logging,
+        #                unrolled=args.unrolled,)  # update alpha
+        architect.step(input, target, input_search, target_search, lr, optimizer, prune_args, unrolled=args.unrolled, )
+        # update alpha
 
-        architect.step(input, target, input_search, target_search, lr, optimizer, step, epoch, args.epochs_pre_prune, args.epochs,
-                       unrolled=args.unrolled,)  # update alpha
         # during the arch.step the optimization for alpha happen
         optimizer.zero_grad()
         logits = model(input)

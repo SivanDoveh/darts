@@ -70,7 +70,7 @@ def main():
   logging.info("args = %s", args)
 
   in_channels, num_classes, dataset_in_torch ,stride_for_aux = utils.dataset_fields(args , train=False)  # new
-  genotype = eval("genotypes.%s" % args.arch)
+  genotype = eval("genotypes.%s" % args.arch)#eval("genotypes.%s" % args.arch)
   model = Network(args.init_channels,in_channels,stride_for_aux, num_classes, args.layers, args.auxiliary, genotype)
   model = model.cuda()
 

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from torch.autograd import Variable
-from perNodeGradient import Prune
+from prune_g import Prune
 
 
 def _concat(xs):
@@ -18,8 +18,7 @@ class Architect(object):
     #self.optimizer = torch.optim.SGD(self.model.arch_parameters(), lr=args.arch_learning_rate, weight_decay=args.arch_weight_decay)
     self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
         lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
-    self.prune = Prune(args.epochs_pre_prune)
-    self.dalpha_unrolled_normalized = None
+    self.prune = Prune(args.num_to_zero)
 
   def _compute_unrolled_model(self, input, target, eta, network_optimizer):
     loss = self.model._loss(input, target)
@@ -32,10 +31,10 @@ class Architect(object):
     unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))#w -eta*(moment+dl/dw) -> unrolled model = network on w'
     return unrolled_model
 
-  def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, prune_args, unrolled):#eta is lr of weights
+  def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, step, epoch, epochs_pre_prune,epochs, unrolled):#eta is lr of weights
     self.optimizer.zero_grad()
     if unrolled:
-        self._backward_step_unrolled(input_train, target_train, input_valid, target_valid, eta, network_optimizer, prune_args)#network_optimizer = SGD for w
+        self._backward_step_unrolled(input_train, target_train, input_valid, target_valid, eta, network_optimizer, step, epoch, epochs_pre_prune,epochs)#network_optimizer = SGD for w
     else:
         self._backward_step(input_valid, target_valid)
     self.optimizer.step() #step of adam for alpha
@@ -44,7 +43,7 @@ class Architect(object):
     loss = self.model._loss(input_valid, target_valid)
     loss.backward()
 
-  def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, prune_args):#calculates update rule for alpha
+  def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, step, epoch, epochs_pre_prune, epochs):#calculates update rule for alpha
     unrolled_model = self._compute_unrolled_model(input_train, target_train, eta, network_optimizer)
     unrolled_loss = unrolled_model._loss(input_valid, target_valid)# L_val  on model with w'
 
@@ -62,20 +61,10 @@ class Architect(object):
       else:
         v.grad.data.copy_(g.data)
 
-    # if step == 0 and epoch >= epochs_pre_prune:
-    #     dalpha_unrolled = [v.grad for v in (self.model.arch_parameters())]
-    #     dalpha_unrolled_normalized = [torch.abs(dalpha_unrolled[i]) / torch.sum(torch.abs(dalpha_unrolled[i]), dim=1).view(-1, 1).repeat(1, dalpha_unrolled[i].size()[1]) for i in range(2)]
-    #     self.prune.prune_alphas_step(self.model.arch_parameters(), dalpha_unrolled, dalpha_unrolled_normalized, epoch, epochs_pre_prune, epochs)
-
-    if prune_args['epoch'] >= prune_args['epochs_pre_prune'] and prune_args['step'] <= prune_args['steps_accum']:
-      dalpha_unrolled = [v.grad for v in (self.model.arch_parameters())]
-      if prune_args['step'] == 0:
-        self.dalpha_unrolled_normalized = [torch.abs(dalpha_unrolled[i]) / torch.sum(torch.abs(dalpha_unrolled[i]), dim=1).view(-1, 1).repeat(1, dalpha_unrolled[i].size()[1]) for i in range(2)]
-      else:
-        self.dalpha_unrolled_normalized = self.dalpha_unrolled_normalized + [torch.abs(dalpha_unrolled[i]) / torch.sum(torch.abs(dalpha_unrolled[i]), dim=1).view(-1, 1).repeat(1, dalpha_unrolled[i].size()[1]) for i in range(2)]
-
-      if prune_args['step'] == prune_args['steps_accum']:
-        self.prune.prune_alphas_step(self.model.arch_parameters(), dalpha_unrolled, self.dalpha_unrolled_normalized, prune_args )
+    if step == 0 and epoch >= epochs_pre_prune:
+        dalpha_unrolled = [v.grad for v in (self.model.arch_parameters())]
+        dalpha_unrolled_normalized = [torch.abs(dalpha_unrolled[i]) / torch.sum(torch.abs(dalpha_unrolled[i]), dim=1).view(-1, 1).repeat(1, dalpha_unrolled[i].size()[1]) for i in range(2)]
+        self.prune.prune_alphas_step(self.model.arch_parameters(), dalpha_unrolled, dalpha_unrolled_normalized)
 
 
   def _construct_model_from_theta(self, theta):
