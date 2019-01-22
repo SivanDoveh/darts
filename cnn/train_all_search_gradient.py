@@ -190,7 +190,7 @@ def search_phase(logging,args):
 
     architect = Architect(model, args)
 
-    for epoch in range(args.epochs-1):
+    for epoch in range(args.epochs):
     #for epoch in range(0, 1):
         scheduler.step()
         lr = scheduler.get_lr()[0]
