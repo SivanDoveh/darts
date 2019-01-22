@@ -24,7 +24,7 @@ import torchvision.transforms as transforms
 
 class Args(object):
     dataset = 'cifar10'
-    data = '../data'
+    data = '../data' # '/data/datasets/automl-pytorch/'
     batch_size = 64
     learning_rate = 0.025
     learning_rate_min = 0.001
@@ -47,8 +47,9 @@ class Args(object):
     arch_weight_decay = 1e-3
     epochs_pre_prune = ''
     steps_accum = ''
+    exponent = ''
 
-    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save):
+    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent):
         # self.dataset = 'cifar10'
         # self.data = '../data'
         # self.batch_size = 64
@@ -73,7 +74,7 @@ class Args(object):
         # self.arch_weight_decay = 1e-3
         self.epochs_pre_prune = epochs_pre_prune
         self.steps_accum = steps_accum
-
+        self.exponent = exponent
 
 def search_phase(logging,args):
 
@@ -94,7 +95,7 @@ def search_phase(logging,args):
             input_search = Variable(input_search, requires_grad=False).cuda()
             target_search = Variable(target_search, requires_grad=False).cuda(async=True)
             prune_args = {'step': step, 'epoch': epoch, 'epochs_pre_prune': args.epochs_pre_prune, 'epochs': args.epochs,
-                          'steps_accum': args.steps_accum, 'logging': logging}
+                          'steps_accum': args.steps_accum, 'logging': logging ,'exponent' : args.exponent}
             # architect.step(input, target, input_search, target_search, lr, optimizer, step, epoch, args.epochs_pre_prune, args.epochs, args.steps_accum, logging,
             #                unrolled=args.unrolled,)  # update alpha
             architect.step(input, target, input_search, target_search, lr, optimizer, prune_args, unrolled=args.unrolled, )
