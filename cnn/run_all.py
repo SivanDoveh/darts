@@ -13,9 +13,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--epochs_pre_prune', type=int, default=0, help='epochs pre pruning')
 parser.add_argument('--steps_accum', type=int, default=0, help='number of steps to accumulate gradients')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
-parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
-parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
+parser.add_argument('--auxiliary', action='store_true', default=True, help='use auxiliary tower')
+parser.add_argument('--cutout', action='store_true', default=True, help='use cutout')
+parser.add_argument('--unrolled', action='store_true', default=True, help='use one-step unrolled validation loss')
+parser.add_argument('--exponent', type=int, default=3, help='sparsity')
 
 args = parser.parse_args()
 
@@ -31,7 +32,7 @@ logging.getLogger().addHandler(fh)
 
 def main():
 
-    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save)
+    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent)
     genotype = train_all_search_gradient.search_phase(logging, args_ts)
     logging.info(' *** end of search ***')
     args_t = train_all.Args(args.gpu, args.auxiliary, args.cutout, args.save)

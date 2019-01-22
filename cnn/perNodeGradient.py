@@ -45,7 +45,7 @@ class Prune(object):
         def num_to_zero_sparse(self, prune_args, k):
             sparsity_prev = self.zeroed_until_now[k] / self.alphas_size_per_node
             self.sparsity[k] = self.s_f_per_node - self.s_f_per_node*(
-                1 - (prune_args['epoch'] + 1 - prune_args['epochs_pre_prune']) / (prune_args['epochs'] - prune_args['epochs_pre_prune'])) ** 3
+                1 - (prune_args['epoch'] + 1 - prune_args['epochs_pre_prune']) / (prune_args['epochs'] - prune_args['epochs_pre_prune'])) ** prune_args['exponent']
             self.num_to_zero[k] = np.floor((self.sparsity[k] - sparsity_prev) * self.alphas_size_per_node)
 
             if prune_args['epoch'] == prune_args['epochs'] - 1:

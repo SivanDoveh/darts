@@ -20,7 +20,7 @@ from model import NetworkCIFAR as Network
 class Args(object):
     dataset = 'cifar10'
     data = '../data'
-    batch_size = 60
+    batch_size = 64
     learning_rate = 0.025
     momentum = 0.9
     weight_decay = 3e-4

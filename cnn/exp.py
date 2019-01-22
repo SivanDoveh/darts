@@ -18,7 +18,7 @@ class Prune(object):
             sparsity_prev = self.zeroed_until_now[k] / self.alphas_size_per_node
             self.sparsity[k] = self.s_f_per_node - self.s_f_per_node * (
                     1 - (prune_args['epoch'] + 1 - prune_args['epochs_pre_prune']) / (
-                        prune_args['epochs'] - prune_args['epochs_pre_prune'])) ** 3
+                        prune_args['epochs'] - prune_args['epochs_pre_prune'])) ** 1.4
             self.num_to_zero[k] = np.floor((self.sparsity[k] - sparsity_prev) * self.alphas_size_per_node)
 
             if prune_args['epoch'] == prune_args['epochs'] - 1:
@@ -46,9 +46,9 @@ class Prune(object):
                     (self.counter[k] + (112 - zeroed) * (prune_args['epochs'] - 1 - prune_args['epoch'])) / (112 * 50)))
 
 
-pre_prune = 20
+pre_prune = 30
 prune = Prune(pre_prune)
-epochs = 90
+epochs = 67
 
 for epoch in range(0, epochs):
     if epoch >= pre_prune:
