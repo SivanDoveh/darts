@@ -32,7 +32,7 @@ class Args(object):
     weight_decay = 3e-4
     report_freq = 50
     gpu = ''
-    epochs = 50
+    epochs = ''
     init_channels = 16
     layers = 8
     model_path = 'saved_models'
@@ -49,7 +49,7 @@ class Args(object):
     steps_accum = ''
     exponent = ''
 
-    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent):
+    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs):
         # self.dataset = 'cifar10'
         # self.data = '../data'
         # self.batch_size = 64
@@ -75,6 +75,7 @@ class Args(object):
         self.epochs_pre_prune = epochs_pre_prune
         self.steps_accum = steps_accum
         self.exponent = exponent
+        self.epochs = epochs
 
 def search_phase(logging,args):
 

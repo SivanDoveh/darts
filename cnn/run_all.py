@@ -17,6 +17,8 @@ parser.add_argument('--auxiliary', action='store_true', default=True, help='use 
 parser.add_argument('--cutout', action='store_true', default=True, help='use cutout')
 parser.add_argument('--unrolled', action='store_true', default=True, help='use one-step unrolled validation loss')
 parser.add_argument('--exponent', type=int, default=3, help='sparsity')
+parser.add_argument('--epochs_s', type=int, default=50, help='epochs')
+
 
 args = parser.parse_args()
 
@@ -29,10 +31,13 @@ fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
 fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
 
+logging.info('gpu device = %d' % args.gpu)
+logging.info("args = %s", args)
+
 
 def main():
 
-    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent)
+    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent, args.epochs_s)
     genotype = train_all_search_gradient.search_phase(logging, args_ts)
     logging.info(' *** end of search ***')
     args_t = train_all.Args(args.gpu, args.auxiliary, args.cutout, args.save)
