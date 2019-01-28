@@ -50,28 +50,9 @@ class Args(object):
     exponent = ''
 
     def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs):
-        # self.dataset = 'cifar10'
-        # self.data = '../data'
-        # self.batch_size = 64
-        # self.learning_rate = 0.025
-        # self.learning_rate_min = 0.001
-        # self.momentum = 0.9
-        # self.weight_decay = 3e-4
-        # self.report_freq = 50
         self.gpu = gpu
-        # self.epochs = 50
-        # self.init_channels = 16
-        # self.layers = 8
-        # self.model_path = 'saved_models'
-        # self.cutout = False
-        # self.drop_path_prob = 0.3
         self.save = save
-        # self.seed = 0
-        # self.grad_clip = 5
-        # self.train_portion = 0.5
         self.unrolled = unrolled
-        # self.arch_learning_rate = 3e-4
-        # self.arch_weight_decay = 1e-3
         self.epochs_pre_prune = epochs_pre_prune
         self.steps_accum = steps_accum
         self.exponent = exponent
@@ -193,7 +174,6 @@ def search_phase(logging,args):
     architect = Architect(model, args)
 
     for epoch in range(args.epochs):
-    #for epoch in range(0, 1):
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
@@ -203,9 +183,9 @@ def search_phase(logging,args):
 
         logging.info('train_acc %f', train_acc)
 
-        # validation
-        #valid_acc, valid_obj = infer(valid_queue, model, criterion)
-        #logging.info('valid_acc %f', valid_acc)
+        if epoch == args.epochs-1:
+            valid_acc, valid_obj = infer(valid_queue, model, criterion)
+            logging.info('valid_acc %f', valid_acc)
 
         genotype = model.genotype()
         logging.info('genotype = %s', genotype)
