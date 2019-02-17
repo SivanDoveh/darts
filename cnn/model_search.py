@@ -22,9 +22,10 @@ class MixedOp(nn.Module):
 
 class Cell(nn.Module):#if reduction=true- then cell will be reduction
 
-  def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
+  def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev, se):
     super(Cell, self).__init__()
     self.reduction = reduction
+    self.se = se
 
     if reduction_prev:
       self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
@@ -43,6 +44,10 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
         op = MixedOp(C, stride)#list of operations per i,j. its instance of  aclass that can be applied after to feature map
         self._ops.append(op)
 
+    ####SElayer
+    self.SELayer = SELayer(multiplier)
+
+
   def forward(self, s0, s1, weights):#cell gets as input the previos outputs. weights is arch_weights:
     s0 = self.preprocess0(s0)#the 1x1 conv on the last inputs.s0 is feature map
     s1 = self.preprocess1(s1)
@@ -53,13 +58,35 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
         s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))#here we get the mixed_op value on feature_maps 0 and 1 
         offset += len(states)
         states.append(s)
+    cat = torch.cat(states[-self._multiplier:], dim=1)
 
-    return torch.cat(states[-self._multiplier:], dim=1)
+    if self.se:
+        cat = self.SELayer(cat)
+
+    return cat
+
+
+class SELayer(nn.Module):
+  def __init__(self, channel, reduction=16):
+    super(SELayer, self).__init__()
+    self.avg_pool = nn.AdaptiveAvgPool2d(1)
+    self.fc = nn.Sequential(
+      nn.Linear(channel, channel // reduction, bias=False),
+      nn.ReLU(inplace=True),
+      nn.Linear(channel // reduction, channel, bias=False),
+      nn.Sigmoid()
+    )
+
+  def forward(self, x):
+    b, c, _, _ = x.size()
+    y = self.avg_pool(x).view(b, c)
+    y = self.fc(y).view(b, c, 1, 1)
+    return x * y.expand_as(x)
 
 
 class Network(nn.Module):
 
-  def __init__(self, C, in_channels, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):#in channels
+  def __init__(self, C, in_channels, num_classes, layers, criterion,se, steps=4, multiplier=4, stem_multiplier=3):#in channels
     super(Network, self).__init__()
     self._C = C
     self._num_classes = num_classes
@@ -68,6 +95,7 @@ class Network(nn.Module):
     self._steps = steps
     self._multiplier = multiplier
     self.in_channels = in_channels
+    self.se = se
 
     C_curr = stem_multiplier*C
     self.stem = nn.Sequential(
@@ -84,7 +112,7 @@ class Network(nn.Module):
         reduction = True
       else:
         reduction = False
-      cell = Cell(steps, multiplier, C_prev_prev, C_prev, C_curr, reduction, reduction_prev)
+      cell = Cell(steps, multiplier, C_prev_prev, C_prev, C_curr, reduction, reduction_prev, se)
       reduction_prev = reduction
       self.cells += [cell]
       C_prev_prev, C_prev = C_prev, multiplier*C_curr
@@ -95,7 +123,7 @@ class Network(nn.Module):
     self._initialize_alphas()
 
   def new(self):
-    model_new = Network(self._C, self.in_channels ,self._num_classes, self._layers, self._criterion).cuda()
+    model_new = Network(self._C, self.in_channels ,self._num_classes, self._layers, self._criterion, self.se).cuda()
     for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
         x.data.copy_(y.data)
     return model_new

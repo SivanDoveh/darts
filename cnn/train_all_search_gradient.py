@@ -49,7 +49,7 @@ class Args(object):
     steps_accum = ''
     exponent = ''
 
-    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs, layers):
+    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs, layers, se):
         self.gpu = gpu
         self.save = save
         self.unrolled = unrolled
@@ -58,6 +58,8 @@ class Args(object):
         self.exponent = exponent
         self.epochs = epochs
         self.layers = layers
+        self.SE = se
+
 
 def search_phase(logging,args):
 
@@ -144,7 +146,7 @@ def search_phase(logging,args):
     in_channels, num_classes, dataset_in_torch = utils.dataset_fields(args)  # new
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
-    model = Network(args.init_channels, in_channels, num_classes, args.layers, criterion)
+    model = Network(args.init_channels, in_channels, num_classes, args.layers, criterion, args.SE)
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 

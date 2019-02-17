@@ -19,7 +19,7 @@ parser.add_argument('--unrolled', action='store_true', default=True, help='use o
 parser.add_argument('--exponent', type=int, default=3, help='sparsity')
 parser.add_argument('--epochs_s', type=int, default=50, help='epochs')
 parser.add_argument('--layers', type=int, default=8, help='layers')
-
+parser.add_argument('--SE', action='store_true', default=False, help='use SE')
 
 args = parser.parse_args()
 
@@ -38,7 +38,7 @@ logging.info("args = %s", args)
 
 def main():
 
-    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent, args.epochs_s, args.layers)
+    args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent, args.epochs_s, args.layers, args.SE)
     genotype = train_all_search_gradient.search_phase(logging, args_ts)
     logging.info(' *** end of search ***')
     args_t = train_all.Args(args.gpu, args.auxiliary, args.cutout, args.save)
