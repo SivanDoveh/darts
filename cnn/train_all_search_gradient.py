@@ -34,7 +34,7 @@ class Args(object):
     gpu = ''
     epochs = ''
     init_channels = 16
-    layers = 8
+    #layers = 8
     model_path = 'saved_models'
     cutout = False
     drop_path_prob = 0.3
@@ -49,7 +49,7 @@ class Args(object):
     steps_accum = ''
     exponent = ''
 
-    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs):
+    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs, layers):
         self.gpu = gpu
         self.save = save
         self.unrolled = unrolled
@@ -57,6 +57,7 @@ class Args(object):
         self.steps_accum = steps_accum
         self.exponent = exponent
         self.epochs = epochs
+        self.layers = layers
 
 def search_phase(logging,args):
 

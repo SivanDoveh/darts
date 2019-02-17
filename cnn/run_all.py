@@ -18,6 +18,7 @@ parser.add_argument('--cutout', action='store_true', default=True, help='use cut
 parser.add_argument('--unrolled', action='store_true', default=True, help='use one-step unrolled validation loss')
 parser.add_argument('--exponent', type=int, default=3, help='sparsity')
 parser.add_argument('--epochs_s', type=int, default=50, help='epochs')
+parser.add_argument('--layers', type=int, default=8, help='layers')
 
 
 args = parser.parse_args()
