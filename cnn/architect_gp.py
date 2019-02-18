@@ -45,7 +45,7 @@ class Architect(object):
     loss.backward()
 
   def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, prune_args):#calculates update rule for alpha
-    unrolled_model = self._compute_unrolled_model(input_train, target_train, eta, network_optimizer)
+    unrolled_model = self._compute_unroled_model(input_train, target_train, eta, network_optimizer)
     unrolled_loss = unrolled_model._loss(input_valid, target_valid)# L_val  on model with w'
 
     unrolled_loss.backward()#
@@ -54,7 +54,7 @@ class Architect(object):
     implicit_grads = self._hessian_vector_product(vector, input_train, target_train) #this is eq.7. now we need to do l_val on w'/daplha - implicit_grads
 
     for g, ig in zip(dalpha, implicit_grads):
-      g.data.sub_(eta, ig.data)# g is dL_val/dalpha, this line computes dL_val/dalpha - eta*implicit.. this is eq.6 for updating alpha
+      g.data.sub_(eta, ig.data)# g is dLl_val/dalpha, this line computes dL_val/dalpha - eta*implicit.. this is eq.6 for updating alpha
 
     for v, g in zip(self.model.arch_parameters(), dalpha):
       if v.grad is None:

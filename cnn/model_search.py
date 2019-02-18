@@ -45,7 +45,7 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
         self._ops.append(op)
 
     ####SElayer
-    self.SELayer = SELayer(multiplier)
+    self.seLayer = Seq_Ex_Block(C*multiplier)
 
 
   def forward(self, s0, s1, weights):#cell gets as input the previos outputs. weights is arch_weights:
@@ -61,27 +61,48 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
     cat = torch.cat(states[-self._multiplier:], dim=1)
 
     if self.se:
-        cat = self.SELayer(cat)
-
+        cat = self.seLayer(cat)
     return cat
 
-
-class SELayer(nn.Module):
-  def __init__(self, channel, reduction=16):
-    super(SELayer, self).__init__()
-    self.avg_pool = nn.AdaptiveAvgPool2d(1)
-    self.fc = nn.Sequential(
-      nn.Linear(channel, channel // reduction, bias=False),
+class Seq_Ex_Block(nn.Module):
+  def __init__(self, in_ch, r=16):
+    super(Seq_Ex_Block, self).__init__()
+    self.se = nn.Sequential(
+      GlobalAvgPool(),
+      nn.Linear(in_ch, in_ch // r),
       nn.ReLU(inplace=True),
-      nn.Linear(channel // reduction, channel, bias=False),
+      nn.Linear(in_ch // r, in_ch),
       nn.Sigmoid()
-    )
+      )
 
   def forward(self, x):
-    b, c, _, _ = x.size()
-    y = self.avg_pool(x).view(b, c)
-    y = self.fc(y).view(b, c, 1, 1)
-    return x * y.expand_as(x)
+    se_weight = self.se(x).unsqueeze(-1).unsqueeze(-1)
+    # print(f'x:{x.sum()}, x_se:{x.mul(se_weight).sum()}')
+    return x.mul(se_weight)
+
+class GlobalAvgPool(nn.Module):
+  def __init__(self):
+    super(GlobalAvgPool, self).__init__()
+
+  def forward(self, x):
+    return x.view(*(x.shape[:-2]), -1).mean(-1)
+
+# class SELayer(nn.Module):
+#   def __init__(self, channel, reduction=16):
+#     super(SELayer, self).__init__()
+#     self.avg_pool = nn.AdaptiveAvgPool2d(1)
+#     self.fc = nn.Sequential(
+#       nn.Linear(channel, channel // reduction, bias=False),
+#       nn.ReLU(inplace=True),
+#       nn.Linear(channel // reduction, channel, bias=False),
+#       nn.Sigmoid()
+#     )
+#
+#   def forward(self, x):
+#     b, c, _, _ = x.size()
+#     y = self.avg_pool(x).view(b, c)
+#     y = self.fc(y).view(b, c, 1, 1)
+#     return x * y.expand_as(x)
 
 
 class Network(nn.Module):
