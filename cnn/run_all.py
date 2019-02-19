@@ -23,7 +23,7 @@ parser.add_argument('--SE', action='store_true', default=False, help='use SE')
 
 args = parser.parse_args()
 
-args.save = 'ALL-accum-' + str(args.steps_accum) + '-pre-' + str(args.epochs_pre_prune)+'-'+time.strftime("%Y%m%d-%H%M%S")
+args.save = 'ALL-accum-' + str(args.steps_accum) + '-pre-' + str(args.epochs_pre_prune)+'-es-'+str(args.epochs_s)+'-'+time.strftime("%Y%m%d-%H%M%S")
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
