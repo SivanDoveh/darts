@@ -49,7 +49,7 @@ class Args(object):
     steps_accum = ''
     exponent = ''
 
-    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs, layers, se):
+    def __init__(self, gpu, unrolled, epochs_pre_prune, steps_accum, save, exponent, epochs, layers, se, beta):
         self.gpu = gpu
         self.save = save
         self.unrolled = unrolled
@@ -59,7 +59,7 @@ class Args(object):
         self.epochs = epochs
         self.layers = layers
         self.SE = se
-
+        self.Beta = beta
 
 def search_phase(logging,args):
 
@@ -79,8 +79,16 @@ def search_phase(logging,args):
             input_search, target_search = next(iter(valid_queue))  # input_search,target_search is for alpha step
             input_search = Variable(input_search, requires_grad=False).cuda()
             target_search = Variable(target_search, requires_grad=False).cuda(async=True)
+
+            if args.Beta == 'abs':
+                beta = 1
+            if args.Beta == 'gradient':
+                beta = 0
+            if args.Beta == 'gradient_to_abs':
+                beta = (epoch-args.epochs_pre_prune)/(args.epochs-args.epochs_pre_prune)
+
             prune_args = {'step': step, 'epoch': epoch, 'epochs_pre_prune': args.epochs_pre_prune, 'epochs': args.epochs,
-                          'steps_accum': args.steps_accum, 'logging': logging ,'exponent' : args.exponent}
+                          'steps_accum': args.steps_accum, 'logging': logging, 'exponent': args.exponent, 'beta': beta}
             # architect.step(input, target, input_search, target_search, lr, optimizer, step, epoch, args.epochs_pre_prune, args.epochs, args.steps_accum, logging,
             #                unrolled=args.unrolled,)  # update alpha
             architect.step(input, target, input_search, target_search, lr, optimizer, prune_args, unrolled=args.unrolled, )

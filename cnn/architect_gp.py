@@ -75,6 +75,7 @@ class Architect(object):
         self.dalpha_unrolled_normalized = self.dalpha_unrolled_normalized + [torch.abs(dalpha_unrolled[i]) / torch.sum(torch.abs(dalpha_unrolled[i]), dim=1).view(-1, 1).repeat(1, dalpha_unrolled[i].size()[1]) for i in range(2)]
         #math.exp(-prune_args['step'] / 3) *
       if prune_args['step'] == prune_args['steps_accum']:
+
         self.prune.prune_alphas_step(self.model.arch_parameters(), dalpha_unrolled, self.dalpha_unrolled_normalized, prune_args )
 
 

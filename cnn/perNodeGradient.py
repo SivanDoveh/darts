@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+import torch.nn.functional as F
 
 class Prune(object):
 
@@ -84,22 +84,23 @@ class Prune(object):
         return list_zeroed
 
     def prune_alphas_step(self, arch_parameters, dalpha, dalpha_normalized_params, prune_args):
+        print('beta ' + str(prune_args['beta']))
         for k in range(0, 2):
 
-            dalpha_normalized = dalpha_normalized_params[k]
+            ranking_values = dalpha_normalized_params[k]*(1-prune_args['beta'])+torch.abs(F.softmax(arch_parameters[k], dim=-1))*prune_args['beta']
             alphas = arch_parameters[k]
             dalphas = dalpha[k]
 
             zeroed = 0
 
-            dalpha_normalized.data.resize_(1, 112)
+            ranking_values.data.resize_(1, 112)
             alphas.data.resize_(1, 112)
             dalphas.data.resize_(1, 112)
 
-            alphas_split = self.split_to_alpha_groups(dalpha_normalized)
+            ranking_split = self.split_to_alpha_groups(ranking_values)
 
             for i in range(0, 4):
-                self.nodes[i].prune_node(alphas_split[i], k, prune_args)
+                self.nodes[i].prune_node(ranking_split[i], k, prune_args)
                 zeroed = zeroed + self.nodes[i].zeroed_until_now[k]
 
             ind_all_alphas = self.all_zero_indices_from_all_nodes(k)
@@ -114,8 +115,6 @@ class Prune(object):
             dalphas.data.resize_(14, 8)
 
             self.counter[k] = self.counter[k] + 112-zeroed
-            prune_args['logging'].info('zeroed %f', zeroed)
-            #print(str(zeroed))
-            prune_args['logging'].info('counter %f', ((self.counter[k]+(112-zeroed)*(prune_args['epochs'] - 1 - prune_args['epoch'])) / (112 * 50)))
-            #if prune_args['epoch'] == prune_args['epochs'] - 1:
-            #    prune_args['logging'].info('counter %f ', (self.counter[k] / (112 * 50)))
+            if k == 1:
+                prune_args['logging'].info('zeroed %f', zeroed)
+                prune_args['logging'].info('counter %f', ((self.counter[k]+(112-zeroed)*(prune_args['epochs'] - 1 - prune_args['epoch'])) / (112 * 50)))

@@ -45,7 +45,9 @@ class Cell(nn.Module):#if reduction=true- then cell will be reduction
         self._ops.append(op)
 
     ####SElayer
-    self.seLayer = Seq_Ex_Block(C*multiplier)
+    if se:
+        self.seLayer = Seq_Ex_Block(C*multiplier)
+
 
 
   def forward(self, s0, s1, weights):#cell gets as input the previos outputs. weights is arch_weights:
