@@ -30,13 +30,13 @@ class Prune(object):
             return list_to_no_zero
 
         def prune_node(self, alphas, k, prune_args):
-            if prune_args['epochs_pre_prune'] < 50:
-                val, ind = alphas.data.sort()
-
-            else:
-                val, ind = alphas.data.sort(descending=True)
-                print('reverse')
-
+            # if prune_args['epochs_pre_prune'] < 50:
+            #     val, ind = alphas.data.sort()
+            #
+            # else:
+            #     val, ind = alphas.data.sort(descending=True)
+            #     print('reverse')
+            val, ind = alphas.data.sort()
             list_zeroed = self.zeros_indices[k]
 
             self.num_to_zero_sparse(prune_args, k)
