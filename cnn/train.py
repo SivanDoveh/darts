@@ -39,6 +39,8 @@ parser.add_argument('--save', type=str, default='EXP', help='experiment name')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
+parser.add_argument('--SE', action='store_true', default=False, help='use SE')
+
 args = parser.parse_args()
 
 #args.save = args.dataset + '-eval-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
@@ -71,7 +73,7 @@ def main():
 
   in_channels, num_classes, dataset_in_torch ,stride_for_aux = utils.dataset_fields(args , train=False)  # new
   genotype = eval("genotypes.%s" % args.arch)#eval("genotypes.%s" % args.arch)
-  model = Network(args.init_channels,in_channels,stride_for_aux, num_classes, args.layers, args.auxiliary, genotype)
+  model = Network(args.init_channels,in_channels,stride_for_aux, num_classes, args.layers, args.auxiliary, genotype, args.SE)
   model = model.cuda()
 
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))

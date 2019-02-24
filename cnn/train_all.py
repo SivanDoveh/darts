@@ -38,7 +38,7 @@ class Args(object):
     seed = 0
     grad_clip = 5
 
-    def __init__(self, gpu, auxiliary, cutout, save):
+    def __init__(self, gpu, auxiliary, cutout, save, se):
         # self.dataset = 'cifar10'
         # self.data = '../data'
         # self.batch_size = 60
@@ -58,7 +58,7 @@ class Args(object):
         self.save = save
         # self.seed = 0
         # self.grad_clip = 5
-
+        self.se = se
 
 def train_phase(genotype_s, logging, args):
 
@@ -133,7 +133,7 @@ def train_phase(genotype_s, logging, args):
 
     in_channels, num_classes, dataset_in_torch ,stride_for_aux = utils.dataset_fields(args , train=False)  # new
     genotype = genotype_s#eval("genotypes.%s" % args.arch)
-    model = Network(args.init_channels,in_channels,stride_for_aux, num_classes, args.layers, args.auxiliary, genotype)
+    model = Network(args.init_channels,in_channels,stride_for_aux, num_classes, args.layers, args.auxiliary, genotype, args.se)
     model = model.cuda()
 
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))

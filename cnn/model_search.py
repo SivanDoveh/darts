@@ -109,7 +109,7 @@ class GlobalAvgPool(nn.Module):
 
 class Network(nn.Module):
 
-  def __init__(self, C, in_channels, num_classes, layers, criterion,se, steps=4, multiplier=4, stem_multiplier=3):#in channels
+  def __init__(self, C, in_channels, num_classes, layers, criterion, se, steps=4, multiplier=4, stem_multiplier=3):#in channels
     super(Network, self).__init__()
     self._C = C
     self._num_classes = num_classes

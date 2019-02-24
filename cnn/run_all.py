@@ -42,7 +42,7 @@ def main():
     args_ts = train_all_search_gradient.Args(args.gpu, args.unrolled, args.epochs_pre_prune, args.steps_accum, args.save, args.exponent, args.epochs_s, args.layers, args.SE, args.Beta)
     genotype = train_all_search_gradient.search_phase(logging, args_ts)
     logging.info(' *** end of search ***')
-    args_t = train_all.Args(args.gpu, args.auxiliary, args.cutout, args.save)
+    args_t = train_all.Args(args.gpu, args.auxiliary, args.cutout, args.save, args.SE)
     logging.info('*** start train ***')
     train_all.train_phase(genotype, logging, args_t)
 

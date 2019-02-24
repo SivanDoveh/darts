@@ -7,10 +7,11 @@ from utils import drop_path
 
 class Cell(nn.Module):
 
-  def __init__(self, genotype, C_prev_prev, C_prev, C, reduction, reduction_prev):
+  def __init__(self, genotype, C_prev_prev, C_prev, C, reduction, reduction_prev, se):
     super(Cell, self).__init__()
     print(C_prev_prev, C_prev, C)
 
+    self.se = se
     if reduction_prev:
       self.preprocess0 = FactorizedReduce(C_prev_prev, C)
     else:
@@ -24,6 +25,8 @@ class Cell(nn.Module):
       op_names, indices = zip(*genotype.normal)
       concat = genotype.normal_concat
     self._compile(C, op_names, indices, concat, reduction)
+    if se:
+        self.seLayer = Seq_Ex_Block(C*4)
 
   def _compile(self, C, op_names, indices, concat, reduction):
     assert len(op_names) == len(indices)
@@ -57,8 +60,35 @@ class Cell(nn.Module):
           h2 = drop_path(h2, drop_prob)
       s = h1 + h2
       states += [s]
-    return torch.cat([states[i] for i in self._concat], dim=1)
 
+    cat = torch.cat([states[i] for i in self._concat], dim=1)
+    if self.se:
+      cat = self.seLayer(cat)
+    return cat
+
+
+class Seq_Ex_Block(nn.Module):
+  def __init__(self, in_ch, r=16):
+    super(Seq_Ex_Block, self).__init__()
+    self.se = nn.Sequential(
+      GlobalAvgPool(),
+      nn.Linear(in_ch, in_ch // r),
+      nn.ReLU(inplace=True),
+      nn.Linear(in_ch // r, in_ch),
+      nn.Sigmoid()
+      )
+
+  def forward(self, x):
+    se_weight = self.se(x).unsqueeze(-1).unsqueeze(-1)
+    # print(f'x:{x.sum()}, x_se:{x.mul(se_weight).sum()}')
+    return x.mul(se_weight)
+
+class GlobalAvgPool(nn.Module):
+  def __init__(self):
+    super(GlobalAvgPool, self).__init__()
+
+  def forward(self, x):
+    return x.view(*(x.shape[:-2]), -1).mean(-1)
 
 class AuxiliaryHeadCIFAR(nn.Module):
 
@@ -110,7 +140,7 @@ class AuxiliaryHeadImageNet(nn.Module):
 
 class NetworkCIFAR(nn.Module):
 
-  def __init__(self, C, in_channels,stride_for_aux,num_classes, layers, auxiliary, genotype):#in channels
+  def __init__(self, C, in_channels,stride_for_aux,num_classes, layers, auxiliary, genotype, se):#in channels
     super(NetworkCIFAR, self).__init__()
     self._layers = layers
     self._auxiliary = auxiliary
@@ -131,7 +161,7 @@ class NetworkCIFAR(nn.Module):
         reduction = True
       else:
         reduction = False
-      cell = Cell(genotype, C_prev_prev, C_prev, C_curr, reduction, reduction_prev)
+      cell = Cell(genotype, C_prev_prev, C_prev, C_curr, reduction, reduction_prev,se)
       reduction_prev = reduction
       self.cells += [cell]
       C_prev_prev, C_prev = C_prev, cell.multiplier*C_curr
